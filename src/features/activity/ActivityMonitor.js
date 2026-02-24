@@ -48,6 +48,14 @@ const IDLE_THRESHOLD_MS = 5 * 60 * 1000;      // 5 min idle = inactive
 const STUCK_THRESHOLD_MS = 15 * 60 * 1000;    // 15 min same window = stuck
 const SESSION_GAP_MS = 10 * 60 * 1000;        // 10 min gap = new session
 const MOMENTUM_WINDOW_MS = 5 * 60 * 1000;     // 5 min rolling window for momentum
+const SPEECH_COOLDOWN_MS = 60 * 1000;          // max 1 speech per 60s
+const STUCK_SPEECH_COOLDOWN_MS = 10 * 60 * 1000; // stuck speech once per 10 min
+const FATIGUE_SAMPLE_INTERVAL_MS = 5 * 60 * 1000; // sample momentum every 5 min
+const FATIGUE_SESSION_MIN_MS = 2 * 60 * 60 * 1000; // 2 hours before fatigue checks
+const RAPID_SWITCH_WINDOW_MS = 2 * 60 * 1000; // 2 min window for rapid switching
+const RAPID_SWITCH_THRESHOLD = 10;             // 10+ switches = rapid
+
+const MOMENTUM_NAMES = ['cold', 'warming', 'flowing', 'focused', 'hot', 'blazing'];
 
 class ActivityMonitor {
   constructor() {
@@ -66,6 +74,22 @@ class ActivityMonitor {
 
     // Stuck detection
     this._sameWindowSince = null;
+
+    // Momentum speech
+    this._lastSpeechAt      = 0;       // throttle speech to 1 per 60s
+    this._prevMomentum      = 0;       // track previous for speech triggers
+
+    // Fatigue detection
+    this._momentumSamples   = [];      // 5-min samples for fatigue detection
+    this._lastMomentumSample = 0;      // timestamp of last sample
+    this._fatigueWarned     = false;   // once per session
+
+    // Enhanced stuck detection
+    this._lastStuckSpeech   = 0;       // cooldown for stuck speech
+    this._windowChanges     = [];      // timestamps for rapid-switch detection
+
+    // Overwork tracking
+    this._lastOverworkWarn  = 0;       // last overwork warning hour-mark
 
     // Wellness timers
     this._lastHydration   = Date.now();
@@ -109,6 +133,11 @@ class ActivityMonitor {
       this._lastWindow = windowKey;
       this._sameWindowSince = now;
 
+      // Track window change timestamps for rapid-switch detection
+      this._windowChanges.push(now);
+      const switchCutoff = now - RAPID_SWITCH_WINDOW_MS;
+      this._windowChanges = this._windowChanges.filter(t => t > switchCutoff);
+
       // Tell ProjectRegistry about the window change
       try {
         const reg = require('../../core/ProjectRegistry');
@@ -124,6 +153,8 @@ class ActivityMonitor {
 
     this._checkWellness(now, isCoding);
     this._checkStuck(now, isCoding);
+    this._checkFatigue(now);
+    this._checkOverwork(now);
     this._broadcastState(processName, title, isCoding);
   }
 
@@ -140,8 +171,13 @@ class ActivityMonitor {
     // Momentum: 0 pulses = 0, 20+ = 5
     const newMomentum = Math.min(5, Math.floor(this._pulses.length / 4));
     if (newMomentum !== this._momentum) {
+      const prev = this._prevMomentum;
+      this._prevMomentum = this._momentum;
       this._momentum = newMomentum;
-      bus.emit(bus.EVENTS.MOMENTUM_CHANGED, { level: this._momentum });
+      bus.emit(bus.EVENTS.MOMENTUM_CHANGED, { level: this._momentum, name: MOMENTUM_NAMES[this._momentum] });
+
+      // Momentum speech triggers
+      this._speakMomentumChange(this._prevMomentum, this._momentum);
     }
 
     bus.emit(bus.EVENTS.ACTIVITY_PULSE, { processName, title, momentum: this._momentum });
@@ -165,8 +201,15 @@ class ActivityMonitor {
 
       // Decay momentum
       if (this._momentum > 0) {
+        const prevForSpeech = this._momentum;
+        this._prevMomentum = this._momentum;
         this._momentum = Math.max(0, this._momentum - 1);
-        bus.emit(bus.EVENTS.MOMENTUM_CHANGED, { level: this._momentum });
+        bus.emit(bus.EVENTS.MOMENTUM_CHANGED, { level: this._momentum, name: MOMENTUM_NAMES[this._momentum] });
+
+        // Speak when dropping to 0 from level 2+
+        if (this._momentum === 0 && prevForSpeech >= 2) {
+          this._speakToCharacter('Taking a breather.');
+        }
       }
 
       // End session if idle long enough
@@ -178,11 +221,30 @@ class ActivityMonitor {
 
   _checkStuck(now, isCoding) {
     if (!isCoding) return;
-    if (!this._sameWindowSince) return;
 
-    const sameWindowMs = now - this._sameWindowSince;
-    if (sameWindowMs > STUCK_THRESHOLD_MS && this._momentum <= 1) {
-      bus.emit(bus.EVENTS.STUCK_DETECTED, { durationMs: sameWindowMs });
+    const canSpeakStuck = (now - this._lastStuckSpeech) > STUCK_SPEECH_COOLDOWN_MS;
+
+    // Original: same window for 15 min + low momentum
+    if (this._sameWindowSince) {
+      const sameWindowMs = now - this._sameWindowSince;
+      if (sameWindowMs > STUCK_THRESHOLD_MS && this._momentum <= 1) {
+        bus.emit(bus.EVENTS.STUCK_DETECTED, { type: 'same-window', durationMs: sameWindowMs });
+        if (canSpeakStuck) {
+          this._lastStuckSpeech = now;
+          this._speakToCharacter("Stuck on something? Try stepping back.");
+        }
+      }
+    }
+
+    // Enhanced: rapid tab switching (10+ changes in 2 min with low momentum)
+    if (this._windowChanges.length >= RAPID_SWITCH_THRESHOLD && this._momentum <= 1) {
+      bus.emit(bus.EVENTS.STUCK_DETECTED, { type: 'rapid-switching', switches: this._windowChanges.length });
+      if (canSpeakStuck) {
+        this._lastStuckSpeech = now;
+        this._speakToCharacter("Searching for something? Try stepping back.");
+        // Reset to avoid repeating immediately
+        this._windowChanges = [];
+      }
     }
   }
 
@@ -214,6 +276,86 @@ class ActivityMonitor {
         this._lastPosture = now;
         bus.emit(bus.EVENTS.POSTURE_CHECK, {});
         this._sendToCharacter('posture');
+      }
+    }
+  }
+
+  // ─── Momentum speech ────────────────────────────────────────────────────────
+
+  _speakMomentumChange(prev, current) {
+    const speeches = {
+      1: 'Starting to warm up...',
+      2: 'Getting into the flow.',
+      3: 'Deep focus. Nice.',
+      4: "You're on fire! Keep going!",
+      5: 'UNSTOPPABLE!',
+    };
+    if (current > prev && speeches[current]) {
+      this._speakToCharacter(speeches[current]);
+    }
+  }
+
+  _speakToCharacter(text) {
+    const now = Date.now();
+    if (now - this._lastSpeechAt < SPEECH_COOLDOWN_MS) return;
+    this._lastSpeechAt = now;
+    ipcMain.emit('momentum-speak', null, { text });
+  }
+
+  // ─── Fatigue detection ──────────────────────────────────────────────────────
+
+  _checkFatigue(now) {
+    if (!this._sessionStart) return;
+    if (this._fatigueWarned) return;
+
+    // Sample momentum every 5 minutes
+    if (now - this._lastMomentumSample >= FATIGUE_SAMPLE_INTERVAL_MS) {
+      this._lastMomentumSample = now;
+      this._momentumSamples.push({ ts: now, momentum: this._momentum });
+      // Keep last 6 samples (30 min window)
+      if (this._momentumSamples.length > 6) {
+        this._momentumSamples = this._momentumSamples.slice(-6);
+      }
+    }
+
+    // Only check after 2+ hours of session
+    const sessionMs = now - this._sessionStart;
+    if (sessionMs < FATIGUE_SESSION_MIN_MS) return;
+
+    // Check if last 3 samples are all low (momentum ≤ 1)
+    if (this._momentumSamples.length >= 3) {
+      const last3 = this._momentumSamples.slice(-3);
+      const allLow = last3.every(s => s.momentum <= 1);
+      if (allLow) {
+        this._fatigueWarned = true;
+        bus.emit(bus.EVENTS.ACTIVITY_FATIGUE, { sessionMs });
+        this._speakToCharacter("You've been at it a while. Consider a break.");
+      }
+    }
+  }
+
+  // ─── Overwork detection ─────────────────────────────────────────────────────
+
+  _checkOverwork(now) {
+    if (!this._sessionStart) return;
+
+    const settings = db.getSettings();
+    if (!settings.overworkEnabled) return;
+
+    const sessionHours = (now - this._sessionStart) / (60 * 60 * 1000);
+    const threshold = settings.overworkThresholdHours || 3;
+
+    // Warn at each threshold hour (3h, 5h, etc.)
+    const warnPoints = [threshold, threshold + 2]; // e.g. 3h and 5h
+    for (const hours of warnPoints) {
+      if (sessionHours >= hours && this._lastOverworkWarn < hours) {
+        this._lastOverworkWarn = hours;
+        bus.emit(bus.EVENTS.OVERWORK_WARNING, { hours: Math.floor(sessionHours) });
+        if (hours === threshold) {
+          this._speakToCharacter(`${Math.floor(hours)} hours straight! Time for a real break.`);
+        } else {
+          this._speakToCharacter(`${Math.floor(hours)} hours of coding. Seriously \u2014 take a walk.`);
+        }
       }
     }
   }
@@ -281,7 +423,13 @@ class ActivityMonitor {
     this._sessionStart = null;
     this._sessionData = null;
     this._momentum = 0;
+    this._prevMomentum = 0;
     this._pulses = [];
+    this._fatigueWarned = false;
+    this._momentumSamples = [];
+    this._lastMomentumSample = 0;
+    this._lastOverworkWarn = 0;
+    this._windowChanges = [];
   }
 
   // ─── State broadcast ──────────────────────────────────────────────────────

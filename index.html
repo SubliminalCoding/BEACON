@@ -65,6 +65,23 @@
     .momentum-pip.lit { background: #a060ff; box-shadow: 0 0 4px #a060ff; }
     .momentum-pip.lit.high { background: #ff6040; box-shadow: 0 0 6px #ff6040; }
 
+    #momentum-label {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      color: rgba(160, 96, 255, 0.6);
+      pointer-events: none;
+      transition: color 0.4s, opacity 0.4s;
+      opacity: 0;
+      white-space: nowrap;
+    }
+    #momentum-label.visible { opacity: 1; }
+
     /* Minimize button — visible on hover */
     #minimize-btn {
       position: fixed;
@@ -94,6 +111,7 @@
   <button id="minimize-btn">&#x2014;</button>
   <canvas id="canvas" width="160" height="220"></canvas>
 
+  <div id="momentum-label"></div>
   <div id="momentum-bar">
     <div class="momentum-pip" id="pip0"></div>
     <div class="momentum-pip" id="pip1"></div>

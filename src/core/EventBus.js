@@ -73,6 +73,7 @@ bus.EVENTS = {
   CODING_DETECTED:      'activity:coding-detected',
   MOMENTUM_CHANGED:     'activity:momentum-changed',
   STUCK_DETECTED:       'activity:stuck-detected',
+  ACTIVITY_FATIGUE:     'activity:fatigue',
 
   // Projects
   PROJECT_DETECTED:     'project:detected',

@@ -64,7 +64,7 @@ contextBridge.exposeInMainWorld('beacon', {
 
   // Event listeners (main → renderer)
   on: (channel, fn) => {
-    const allowed = ['character-state', 'briefing-data', 'activity-update', 'project-switched', 'reminder-speak'];
+    const allowed = ['character-state', 'briefing-data', 'activity-update', 'project-switched', 'reminder-speak', 'momentum-speak'];
     if (allowed.includes(channel)) {
       ipcRenderer.on(channel, (_, data) => fn(data));
     }

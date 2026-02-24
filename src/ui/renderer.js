@@ -124,12 +124,24 @@ let isHovered = false;
 
 // Momentum pip elements
 const pips = [0, 1, 2, 3, 4].map(i => document.getElementById(`pip${i}`));
+const momentumLabel = document.getElementById('momentum-label');
+const MOMENTUM_NAMES  = ['', 'WARMING', 'FLOWING', 'FOCUSED', 'HOT', 'BLAZING'];
+const MOMENTUM_COLORS = ['', 'rgba(160,96,255,0.6)', 'rgba(80,200,255,0.7)', 'rgba(66,200,245,0.8)', 'rgba(255,159,66,0.9)', 'rgba(255,96,64,1)'];
 
 function updateMomentumPips(level) {
   pips.forEach((pip, i) => {
     pip.classList.toggle('lit', i < level);
     pip.classList.toggle('high', i < level && level >= 4);
   });
+
+  // Update momentum label
+  if (level >= 1 && level <= 5) {
+    momentumLabel.textContent = MOMENTUM_NAMES[level];
+    momentumLabel.style.color = MOMENTUM_COLORS[level];
+    momentumLabel.classList.add('visible');
+  } else {
+    momentumLabel.classList.remove('visible');
+  }
 }
 
 // ─── Context menu ─────────────────────────────────────────────────────────────
@@ -280,6 +292,10 @@ window.beacon.on('character-state', (data) => {
 
 window.beacon.on('reminder-speak', (data) => {
   if (animator && data.text) animator.speak(data.text, 5000);
+});
+
+window.beacon.on('momentum-speak', (data) => {
+  if (animator && data.text) animator.speak(data.text, 4000);
 });
 
 // ─── Game loop ────────────────────────────────────────────────────────────────

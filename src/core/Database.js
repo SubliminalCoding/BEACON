@@ -61,6 +61,10 @@ const DEFAULTS = {
     scanRoots: [],          // directories to scan for projects
     autoDetectProjects: true,
 
+    // Overwork
+    overworkEnabled: true,
+    overworkThresholdHours: 3,
+
     // General
     startWithWindows: false,
     minimizeToTray: true,

@@ -53,6 +53,13 @@ app.whenReady().then(async () => {
     }
   });
 
+  // Forward momentum speech to character window
+  ipcMain.on('momentum-speak', (_, data) => {
+    if (characterWindow && !characterWindow.isDestroyed()) {
+      characterWindow.webContents.send('momentum-speak', data);
+    }
+  });
+
   // Show daily briefing if appropriate
   if (briefing.shouldShow()) {
     setTimeout(() => showBriefingWindow(), 1500);
