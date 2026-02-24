@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BEACON — Projects</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0d0a1e; --surface: #15103a; --surface2: #1c1650;
+      --border: #2e1f6e; --accent: #7050e0; --accent2: #42c8f5;
+      --text: #e0d4ff; --muted: #8070b0;
+      --success: #42f590; --warn: #f5a242; --danger: #f54242;
+    }
+    html, body { width: 700px; height: 780px; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 13px; }
+
+    .titlebar { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border); -webkit-app-region:drag; }
+    .titlebar-left { display:flex; align-items:center; gap:10px; }
+    .beacon-dot { width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .titlebar h1 { font-size:13px; font-weight:600; letter-spacing:2px; color:var(--accent2); }
+    .close-btn { -webkit-app-region:no-drag; background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:2px 6px; border-radius:4px; }
+    .close-btn:hover { background:rgba(200,50,50,0.3); color:#ff6060; }
+
+    .layout { display:flex; height:calc(100% - 48px); }
+
+    /* Sidebar */
+    .sidebar { width:200px; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); }
+    .sidebar-header { padding:10px 12px; font-size:10px; font-weight:600; letter-spacing:1px; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .sidebar-list { flex:1; overflow-y:auto; }
+    .sidebar-item { padding:10px 12px; cursor:pointer; border-bottom:1px solid rgba(46,31,110,0.3); transition:background 0.15s; display:flex; flex-direction:column; gap:2px; }
+    .sidebar-item:hover { background:rgba(112,80,224,0.15); }
+    .sidebar-item.active { background:rgba(112,80,224,0.25); border-left:3px solid var(--accent); padding-left:9px; }
+    .sidebar-item .item-name { font-weight:600; font-size:12px; }
+    .sidebar-item .item-meta { font-size:10px; color:var(--muted); }
+    .sidebar-item .item-lang { font-size:9px; background:rgba(112,80,224,0.2); color:var(--accent2); border-radius:2px; padding:0 4px; display:inline-block; margin-top:2px; }
+    .add-project-btn { -webkit-app-region:no-drag; background:none; border:none; color:var(--accent2); cursor:pointer; font-size:16px; padding:2px; }
+    .sidebar-list::-webkit-scrollbar { width:3px; }
+    .sidebar-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    /* Main panel */
+    .main-panel { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; }
+    .main-panel::-webkit-scrollbar { width:4px; }
+    .main-panel::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--muted); gap:12px; }
+    .empty-state .big { font-size:40px; }
+
+    /* Project header */
+    .project-header { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+    .project-header h2 { font-size:16px; font-weight:700; margin-bottom:4px; }
+    .project-header .meta-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px; }
+    .tag { font-size:10px; background:rgba(112,80,224,0.2); color:var(--accent2); border-radius:3px; padding:2px 7px; }
+    .tag.status-active { background:rgba(66,245,144,0.1); color:var(--success); }
+    .tag.status-parked { background:rgba(245,162,66,0.1); color:var(--warn); }
+    .tag.status-completed { background:rgba(112,80,224,0.1); color:var(--muted); }
+
+    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px; text-align:center; }
+    .stat-card .val { font-size:18px; font-weight:700; color:var(--accent); }
+    .stat-card .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+
+    /* Goals section */
+    .section { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .section-header { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); font-size:11px; font-weight:600; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+    .section-body { padding:10px 12px; }
+    .add-btn { background:none; border:1px solid var(--border); color:var(--accent2); cursor:pointer; font-size:11px; padding:2px 8px; border-radius:4px; transition:all 0.2s; }
+    .add-btn:hover { background:rgba(66,200,245,0.1); }
+
+    .goal-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid rgba(46,31,110,0.4); }
+    .goal-item:last-child { border-bottom:none; }
+    .goal-check { width:16px; height:16px; border-radius:3px; border:1px solid var(--border); background:transparent; cursor:pointer; flex-shrink:0; margin-top:1px; transition:all 0.2s; }
+    .goal-check.done { background:var(--accent); border-color:var(--accent); }
+    .goal-content { flex:1; }
+    .goal-title { font-size:12px; }
+    .goal-title.done-text { text-decoration:line-through; color:var(--muted); }
+    .goal-meta { font-size:10px; color:var(--muted); margin-top:2px; }
+    .goal-due { font-size:10px; color:var(--warn); }
+    .goal-due.overdue { color:var(--danger); }
+
+    /* Sessions */
+    .session-item { padding:7px 0; border-bottom:1px solid rgba(46,31,110,0.4); display:flex; align-items:center; gap:10px; }
+    .session-item:last-child { border-bottom:none; }
+    .session-duration { font-weight:600; color:var(--accent2); min-width:50px; font-size:12px; }
+    .session-date { font-size:11px; color:var(--muted); }
+    .session-momentum { font-size:10px; color:var(--muted); }
+
+    /* Notes */
+    .notes-area { width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-family:inherit; font-size:12px; padding:8px; min-height:80px; resize:vertical; outline:none; transition:border-color 0.2s; }
+    .notes-area:focus { border-color:var(--accent); }
+    .notes-area::placeholder { color:var(--muted); }
+    .save-btn { margin-top:6px; background:var(--accent); border:none; border-radius:4px; color:#fff; font-size:11px; padding:5px 12px; cursor:pointer; }
+    .save-btn:hover { opacity:0.85; }
+
+    /* Add goal form */
+    .add-goal-form { display:none; margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+    .form-row { display:flex; gap:8px; }
+    .form-input { flex:1; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:inherit; font-size:12px; padding:5px 8px; outline:none; }
+    .form-input:focus { border-color:var(--accent); }
+    .form-input::placeholder { color:var(--muted); }
+    .submit-btn { background:var(--accent); border:none; border-radius:4px; color:#fff; font-size:11px; padding:5px 10px; cursor:pointer; white-space:nowrap; }
+
+    .empty-section { color:var(--muted); font-size:12px; padding:4px 0; }
+
+    /* Path display */
+    .path-link { font-size:11px; color:var(--accent2); cursor:pointer; text-decoration:underline; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
+    .path-link:hover { color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <div class="beacon-dot"></div>
+      <h1>BEACON — Projects</h1>
+    </div>
+    <button class="close-btn" id="close-btn">✕</button>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        Projects
+        <button class="add-project-btn" id="add-project-btn" title="Add project">＋</button>
+      </div>
+      <div class="sidebar-list" id="sidebar-list">
+        <div style="padding:16px;color:#6050a0;font-size:12px">Loading...</div>
+      </div>
+    </div>
+    <div class="main-panel" id="main-panel">
+      <div class="empty-state">
+        <div class="big">📡</div>
+        <div>Select a project to view details</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allProjects = [];
+    let selectedId = null;
+    let showGoalForm = false;
+
+    function formatMs(ms) {
+      if (!ms || ms < 60000) return '0m';
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+    function timeAgo(ts) {
+      if (!ts) return 'never';
+      const d = Math.floor((Date.now()-ts)/86400000);
+      const h = Math.floor((Date.now()-ts)/3600000);
+      if (d >= 1) return `${d}d ago`;
+      if (h >= 1) return `${h}h ago`;
+      return 'recently';
+    }
+    function formatDate(ts) {
+      if (!ts) return '';
+      return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    }
+
+    document.getElementById('close-btn').addEventListener('click', () => window.beacon.closeWindow());
+
+    async function loadProjects() {
+      allProjects = await window.beacon.getProjects();
+      allProjects.sort((a,b) => (b.lastActiveAt||0) - (a.lastActiveAt||0));
+      renderSidebar();
+    }
+
+    function renderSidebar() {
+      const list = document.getElementById('sidebar-list');
+      if (allProjects.length === 0) {
+        list.innerHTML = '<div style="padding:16px;color:#6050a0;font-size:12px">No projects yet.<br>Click ＋ to add one.</div>';
+        return;
+      }
+      list.innerHTML = allProjects.map(p => `
+        <div class="sidebar-item ${p.id === selectedId ? 'active' : ''}" data-id="${p.id}">
+          <span class="item-name">${p.name}</span>
+          <span class="item-lang">${p.language || '?'}</span>
+          <span class="item-meta">${p.lastActiveAt ? timeAgo(p.lastActiveAt) : 'new'}</span>
+        </div>`).join('');
+
+      list.querySelectorAll('.sidebar-item').forEach(el => {
+        el.addEventListener('click', () => selectProject(el.dataset.id));
+      });
+    }
+
+    async function selectProject(id) {
+      selectedId = id;
+      renderSidebar();
+      const stats = await window.beacon.getProjectStats(id);
+      const goals = await window.beacon.getGoals(id);
+      const sessions = await window.beacon.getSessions(id);
+      renderProjectDetail(stats, goals, sessions);
+    }
+
+    function renderProjectDetail(stats, goals, sessions) {
+      if (!stats) return;
+      const p = stats.project;
+      const openGoals = goals.filter(g => !g.completed);
+      const doneGoals = goals.filter(g => g.completed);
+
+      let html = '';
+
+      // Header
+      html += `<div class="project-header">
+        <h2>${p.name}</h2>
+        <div class="meta-row">
+          <span class="tag">${p.language || 'Unknown'}</span>
+          <span class="tag status-${p.status}">${p.status}</span>
+          ${p.gitRemote ? `<span class="tag">git</span>` : ''}
+          ${p.rootPath ? `<span class="path-link" data-path="${p.rootPath}" title="${p.rootPath}">${p.rootPath.split('\\').pop() || p.rootPath}</span>` : ''}
+        </div>
+      </div>`;
+
+      // Stats
+      html += `<div class="stats-grid">
+        <div class="stat-card"><div class="val">${formatMs(p.totalTimeMs)}</div><div class="lbl">Total Time</div></div>
+        <div class="stat-card"><div class="val">${stats.sessionCount}</div><div class="lbl">Sessions</div></div>
+        <div class="stat-card"><div class="val">${stats.daysSinceActive != null ? stats.daysSinceActive === 0 ? 'today' : stats.daysSinceActive + 'd' : '—'}</div><div class="lbl">Last Active</div></div>
+      </div>`;
+
+      // Goals
+      const goalRows = openGoals.map(g => {
+        const isOverdue = g.dueDate && g.dueDate < Date.now();
+        return `<div class="goal-item">
+          <div class="goal-check" data-gid="${g.id}" title="Mark complete"></div>
+          <div class="goal-content">
+            <div class="goal-title">${g.title}</div>
+            ${g.dueDate ? `<div class="goal-due ${isOverdue?'overdue':''}">${isOverdue?'⚠ Overdue — ':'Due '}${formatDate(g.dueDate)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('') || '<div class="empty-section">No open goals. Add one below.</div>';
+
+      const doneRows = doneGoals.slice(0,3).map(g =>
+        `<div class="goal-item">
+          <div class="goal-check done"></div>
+          <div class="goal-content"><div class="goal-title done-text">${g.title}</div></div>
+        </div>`
+      ).join('');
+
+      html += `<div class="section">
+        <div class="section-header">
+          Goals
+          <button class="add-btn" id="add-goal-btn">+ Add Goal</button>
+        </div>
+        <div class="section-body">
+          <div id="add-goal-form" style="display:none;margin-bottom:10px;">
+            <div class="form-row">
+              <input class="form-input" id="goal-title-input" placeholder="Goal description...">
+              <input class="form-input" id="goal-due-input" type="date" style="max-width:130px" title="Due date (optional)">
+              <button class="submit-btn" id="goal-submit-btn">Add</button>
+            </div>
+          </div>
+          ${goalRows}
+          ${doneRows}
+        </div>
+      </div>`;
+
+      // Recent sessions
+      const sessionRows = (sessions||[]).slice(0,8).map(s =>
+        `<div class="session-item">
+          <span class="session-duration">${formatMs(s.durationMs)}</span>
+          <span class="session-date">${formatDate(s.startedAt)}</span>
+          <span class="session-momentum">${'●'.repeat(s.peakMomentum||0)}${'○'.repeat(5-(s.peakMomentum||0))}</span>
+        </div>`
+      ).join('') || '<div class="empty-section">No sessions recorded yet.</div>';
+
+      html += `<div class="section">
+        <div class="section-header">Recent Sessions</div>
+        <div class="section-body">${sessionRows}</div>
+      </div>`;
+
+      // Notes
+      html += `<div class="section">
+        <div class="section-header">Notes</div>
+        <div class="section-body">
+          <textarea class="notes-area" id="notes-area" placeholder="Add notes about this project...">${p.notes||''}</textarea>
+          <button class="save-btn" id="save-notes-btn">Save Notes</button>
+        </div>
+      </div>`;
+
+      // Status actions
+      html += `<div class="section">
+        <div class="section-header">Actions</div>
+        <div class="section-body" style="display:flex;gap:8px;flex-wrap:wrap">
+          ${p.status !== 'parked' ? `<button class="add-btn" id="park-btn">Park Project</button>` : `<button class="add-btn" id="unpark-btn">Reactivate</button>`}
+          ${p.rootPath ? `<button class="add-btn" id="open-path-btn">Open Folder</button>` : ''}
+        </div>
+      </div>`;
+
+      document.getElementById('main-panel').innerHTML = html;
+
+      // Wire up events
+      document.getElementById('add-goal-btn').addEventListener('click', () => {
+        const form = document.getElementById('add-goal-form');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+      });
+
+      document.getElementById('goal-submit-btn').addEventListener('click', async () => {
+        const title = document.getElementById('goal-title-input').value.trim();
+        const dueStr = document.getElementById('goal-due-input').value;
+        if (!title) return;
+        await window.beacon.addGoal(selectedId, {
+          title,
+          dueDate: dueStr ? new Date(dueStr).getTime() : null,
+        });
+        selectProject(selectedId);
+      });
+
+      document.querySelectorAll('.goal-check:not(.done)').forEach(el => {
+        el.addEventListener('click', async () => {
+          await window.beacon.completeGoal(selectedId, el.dataset.gid);
+          selectProject(selectedId);
+        });
+      });
+
+      document.getElementById('save-notes-btn').addEventListener('click', async () => {
+        const notes = document.getElementById('notes-area').value;
+        await window.beacon.saveProject({ ...p, notes });
+        document.getElementById('save-notes-btn').textContent = 'Saved ✓';
+        setTimeout(() => { document.getElementById('save-notes-btn').textContent = 'Save Notes'; }, 1500);
+      });
+
+      const parkBtn = document.getElementById('park-btn');
+      if (parkBtn) {
+        parkBtn.addEventListener('click', async () => {
+          await window.beacon.parkProject(selectedId);
+          loadProjects();
+          selectProject(selectedId);
+        });
+      }
+
+      const openPathBtn = document.getElementById('open-path-btn');
+      if (openPathBtn) {
+        openPathBtn.addEventListener('click', () => window.beacon.openPath(p.rootPath));
+      }
+
+      document.querySelectorAll('.path-link').forEach(el => {
+        el.addEventListener('click', () => window.beacon.openPath(el.dataset.path));
+      });
+    }
+
+    // Add project handler
+    document.getElementById('add-project-btn').addEventListener('click', () => {
+      const name = prompt('Project name:');
+      if (!name) return;
+      const rootPath = prompt('Project folder path (optional — leave blank to skip):');
+      window.beacon.addProject({ name, rootPath: rootPath || null }).then(() => {
+        loadProjects();
+      });
+    });
+
+    loadProjects();
+  </script>
+</body>
+</html>

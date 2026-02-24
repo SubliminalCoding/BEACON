@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BEACON</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 160px;
+      height: 220px;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      -webkit-app-region: no-drag;
+    }
+
+    #canvas {
+      display: block;
+      cursor: default;
+    }
+
+    /* Context menu (right-click on character) */
+    #ctx-menu {
+      display: none;
+      position: fixed;
+      background: rgba(15, 10, 35, 0.95);
+      border: 1px solid #4a3090;
+      border-radius: 6px;
+      padding: 4px 0;
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 12px;
+      color: #d0c0ff;
+      z-index: 9999;
+      min-width: 160px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    #ctx-menu.visible { display: block; }
+    .ctx-item {
+      padding: 6px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .ctx-item:hover { background: rgba(100,60,200,0.4); }
+    .ctx-sep { border-top: 1px solid rgba(100,60,200,0.3); margin: 3px 0; }
+
+    /* Momentum indicator bar at bottom */
+    #momentum-bar {
+      position: fixed;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .momentum-pip {
+      width: 8px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(100,80,180,0.3);
+      transition: background 0.4s;
+    }
+    .momentum-pip.lit { background: #a060ff; box-shadow: 0 0 4px #a060ff; }
+    .momentum-pip.lit.high { background: #ff6040; box-shadow: 0 0 6px #ff6040; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="160" height="220"></canvas>
+
+  <div id="momentum-bar">
+    <div class="momentum-pip" id="pip0"></div>
+    <div class="momentum-pip" id="pip1"></div>
+    <div class="momentum-pip" id="pip2"></div>
+    <div class="momentum-pip" id="pip3"></div>
+    <div class="momentum-pip" id="pip4"></div>
+  </div>
+
+  <div id="ctx-menu">
+    <div class="ctx-item" id="menu-briefing">📋 Today's Briefing</div>
+    <div class="ctx-item" id="menu-projects">📁 My Projects</div>
+    <div class="ctx-item" id="menu-ask">💬 Ask BEACON</div>
+    <div class="ctx-item" id="menu-reminder">⏰ Set Reminder</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" id="menu-settings">⚙️ Settings</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" id="menu-hide">Hide</div>
+  </div>
+
+  <script src="src/ui/renderer.js"></script>
+</body>
+</html>

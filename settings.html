@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BEACON — Settings</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#0d0a1e; --surface:#15103a; --border:#2e1f6e;
+      --accent:#7050e0; --accent2:#42c8f5;
+      --text:#e0d4ff; --muted:#8070b0;
+      --success:#42f590;
+    }
+    html,body { width:560px; height:700px; overflow:hidden; background:var(--bg); color:var(--text); font-family:'Segoe UI',sans-serif; font-size:13px; }
+    .titlebar { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border); -webkit-app-region:drag; }
+    .titlebar-left { display:flex; align-items:center; gap:10px; }
+    .beacon-dot { width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .titlebar h1 { font-size:13px; font-weight:600; letter-spacing:2px; color:var(--accent2); }
+    .close-btn { -webkit-app-region:no-drag; background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:2px 6px; border-radius:4px; }
+    .close-btn:hover { background:rgba(200,50,50,0.3); color:#ff6060; }
+
+    .content { height:calc(100% - 88px); overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; }
+    .content::-webkit-scrollbar { width:4px; }
+    .content::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    .footer { height:48px; display:flex; align-items:center; justify-content:flex-end; padding:0 16px; border-top:1px solid var(--border); gap:8px; }
+    .save-btn { background:var(--accent); border:none; border-radius:6px; color:#fff; font-size:13px; padding:8px 20px; cursor:pointer; }
+    .save-btn:hover { opacity:0.85; }
+    .cancel-btn { background:none; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:13px; padding:8px 16px; cursor:pointer; }
+
+    .section { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .section-header { padding:8px 12px; border-bottom:1px solid var(--border); font-size:11px; font-weight:600; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+    .section-body { padding:12px; display:flex; flex-direction:column; gap:10px; }
+
+    .setting-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .setting-label { flex:1; }
+    .setting-label strong { display:block; font-size:12px; margin-bottom:1px; }
+    .setting-label span { font-size:11px; color:var(--muted); }
+
+    /* Toggle */
+    .toggle { position:relative; width:36px; height:20px; flex-shrink:0; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; inset:0; background:rgba(112,80,224,0.2); border:1px solid var(--border); border-radius:20px; cursor:pointer; transition:all 0.2s; }
+    .toggle input:checked + .toggle-slider { background:var(--accent); border-color:var(--accent); }
+    .toggle-slider:before { content:''; position:absolute; height:14px; width:14px; left:2px; top:2px; background:#fff; border-radius:50%; transition:0.2s; }
+    .toggle input:checked + .toggle-slider:before { transform:translateX(16px); }
+
+    /* Number input */
+    .num-input { width:60px; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:inherit; font-size:12px; padding:4px 8px; text-align:center; outline:none; }
+    .num-input:focus { border-color:var(--accent); }
+
+    /* Text input */
+    .text-input { flex:1; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:inherit; font-size:12px; padding:5px 8px; outline:none; }
+    .text-input:focus { border-color:var(--accent); }
+    .text-input::placeholder { color:var(--muted); }
+    .text-input[type=password] { letter-spacing:2px; }
+
+    /* Path list */
+    .path-list { display:flex; flex-direction:column; gap:4px; }
+    .path-item { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.15); border:1px solid var(--border); border-radius:4px; padding:4px 8px; font-size:11px; }
+    .path-item span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent2); }
+    .path-remove { background:none; border:none; color:var(--muted); cursor:pointer; font-size:12px; }
+    .path-remove:hover { color:#ff6060; }
+    .path-add-row { display:flex; gap:6px; }
+    .scan-btn { background:none; border:1px solid var(--accent); border-radius:4px; color:var(--accent2); font-size:11px; padding:4px 10px; cursor:pointer; white-space:nowrap; }
+    .scan-btn:hover { background:rgba(112,80,224,0.15); }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <div class="beacon-dot"></div>
+      <h1>BEACON — Settings</h1>
+    </div>
+    <button class="close-btn" id="close-btn">✕</button>
+  </div>
+
+  <div class="content" id="content">
+    <div style="text-align:center;padding:40px;color:#6050a0">Loading settings...</div>
+  </div>
+
+  <div class="footer">
+    <button class="cancel-btn" id="cancel-btn">Cancel</button>
+    <button class="save-btn" id="save-btn">Save Settings</button>
+  </div>
+
+  <script>
+    let settings = {};
+    let scanRoots = [];
+
+    document.getElementById('close-btn').addEventListener('click', () => window.beacon.closeWindow());
+    document.getElementById('cancel-btn').addEventListener('click', () => window.beacon.closeWindow());
+
+    async function load() {
+      settings = await window.beacon.getSettings();
+      scanRoots = [...(settings.scanRoots || [])];
+      render();
+    }
+
+    function toggle(id, key) {
+      return `<label class="toggle">
+        <input type="checkbox" id="${id}" ${settings[key] ? 'checked' : ''}>
+        <span class="toggle-slider"></span>
+      </label>`;
+    }
+
+    function numInput(id, key, min, max) {
+      return `<input type="number" class="num-input" id="${id}" value="${settings[key]||0}" min="${min}" max="${max}">`;
+    }
+
+    function render() {
+      const paths = scanRoots.map((p, i) =>
+        `<div class="path-item">
+          <span title="${p}">${p}</span>
+          <button class="path-remove" data-i="${i}" title="Remove">✕</button>
+        </div>`
+      ).join('');
+
+      document.getElementById('content').innerHTML = `
+        <!-- Pomodoro Timer -->
+        <div class="section">
+          <div class="section-header">⏱ Pomodoro Timer</div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-label"><strong>Enable Timer</strong></div>
+              ${toggle('timer-enabled','timerEnabled')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Work Duration</strong><span>minutes</span></div>
+              ${numInput('work-min','workMinutes',5,120)}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Short Break</strong><span>minutes</span></div>
+              ${numInput('short-break','shortBreakMinutes',1,30)}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Long Break</strong><span>minutes</span></div>
+              ${numInput('long-break','longBreakMinutes',5,60)}
+            </div>
+          </div>
+        </div>
+
+        <!-- Wellness -->
+        <div class="section">
+          <div class="section-header">💧 Wellness Reminders</div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-label"><strong>Hydration Reminder</strong></div>
+              ${toggle('hydration-enabled','hydrationEnabled')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Every</strong><span>minutes</span></div>
+              ${numInput('hydration-interval','hydrationIntervalMinutes',10,120)}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Eye Strain (20-20-20)</strong></div>
+              ${toggle('eyestrain-enabled','eyestrainEnabled')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Every</strong><span>minutes</span></div>
+              ${numInput('eyestrain-interval','eyestrainIntervalMinutes',10,60)}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Posture Check</strong></div>
+              ${toggle('posture-enabled','postureEnabled')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Every</strong><span>minutes</span></div>
+              ${numInput('posture-interval','postureIntervalMinutes',15,120)}
+            </div>
+          </div>
+        </div>
+
+        <!-- Project Scanning -->
+        <div class="section">
+          <div class="section-header">📁 Project Scanning</div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-label"><strong>Auto-detect Projects</strong><span>Scan roots on startup</span></div>
+              ${toggle('auto-detect','autoDetectProjects')}
+            </div>
+            <div class="setting-label" style="margin-top:4px"><strong>Scan Root Folders</strong></div>
+            <div class="path-list" id="path-list">${paths || '<div style="color:#6050a0;font-size:12px">No folders configured</div>'}</div>
+            <div class="path-add-row">
+              <input class="text-input" id="new-path-input" placeholder="C:\\Users\\you\\Projects">
+              <button class="scan-btn" id="add-path-btn">Add Folder</button>
+              <button class="scan-btn" id="scan-now-btn">Scan Now</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Claude AI -->
+        <div class="section">
+          <div class="section-header">🤖 Claude AI Coaching</div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-label"><strong>Enable Claude Coaching</strong></div>
+              ${toggle('claude-enabled','claudeEnabled')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>API Key</strong><span>From console.anthropic.com</span></div>
+            </div>
+            <input type="password" class="text-input" id="claude-api-key" placeholder="sk-ant-..." value="${settings.claudeApiKey||''}">
+            <div class="setting-row">
+              <div class="setting-label"><strong>Session Summaries</strong><span>Generate summary after each session</span></div>
+              ${toggle('claude-summaries','claudeSessionSummaries')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="section">
+          <div class="section-header">🔔 Notifications</div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-label"><strong>Enable Notifications</strong></div>
+              ${toggle('notif-enabled','notificationsEnabled')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Daily Briefing on Startup</strong></div>
+              ${toggle('briefing-startup','briefingOnStartup')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Goal Reminders</strong></div>
+              ${toggle('goal-reminders','goalRemindersEnabled')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Character -->
+        <div class="section">
+          <div class="section-header">🧙 Character</div>
+          <div class="section-body">
+            <div class="setting-row">
+              <div class="setting-label"><strong>Show Character</strong></div>
+              ${toggle('char-visible','characterVisible')}
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>Ghost Mode</strong><span>Character never captures clicks</span></div>
+              ${toggle('ghost-mode','ghostMode')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Wire up path management
+      document.getElementById('add-path-btn').addEventListener('click', () => {
+        const val = document.getElementById('new-path-input').value.trim();
+        if (val && !scanRoots.includes(val)) {
+          scanRoots.push(val);
+          render();
+        }
+      });
+
+      document.querySelectorAll('.path-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+          scanRoots.splice(parseInt(btn.dataset.i), 1);
+          render();
+        });
+      });
+
+      document.getElementById('scan-now-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('scan-now-btn');
+        btn.textContent = 'Scanning...';
+        btn.disabled = true;
+        await window.beacon.scanForProjects(scanRoots);
+        btn.textContent = 'Done ✓';
+        setTimeout(() => { btn.textContent = 'Scan Now'; btn.disabled = false; }, 2000);
+      });
+    }
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      const newSettings = {
+        timerEnabled: document.getElementById('timer-enabled').checked,
+        workMinutes: parseInt(document.getElementById('work-min').value),
+        shortBreakMinutes: parseInt(document.getElementById('short-break').value),
+        longBreakMinutes: parseInt(document.getElementById('long-break').value),
+        hydrationEnabled: document.getElementById('hydration-enabled').checked,
+        hydrationIntervalMinutes: parseInt(document.getElementById('hydration-interval').value),
+        eyestrainEnabled: document.getElementById('eyestrain-enabled').checked,
+        eyestrainIntervalMinutes: parseInt(document.getElementById('eyestrain-interval').value),
+        postureEnabled: document.getElementById('posture-enabled').checked,
+        postureIntervalMinutes: parseInt(document.getElementById('posture-interval').value),
+        autoDetectProjects: document.getElementById('auto-detect').checked,
+        scanRoots,
+        claudeEnabled: document.getElementById('claude-enabled').checked,
+        claudeApiKey: document.getElementById('claude-api-key').value.trim(),
+        claudeSessionSummaries: document.getElementById('claude-summaries').checked,
+        notificationsEnabled: document.getElementById('notif-enabled').checked,
+        briefingOnStartup: document.getElementById('briefing-startup').checked,
+        goalRemindersEnabled: document.getElementById('goal-reminders').checked,
+        characterVisible: document.getElementById('char-visible').checked,
+        ghostMode: document.getElementById('ghost-mode').checked,
+      };
+      await window.beacon.saveSettings(newSettings);
+      document.getElementById('save-btn').textContent = 'Saved ✓';
+      setTimeout(() => { document.getElementById('save-btn').textContent = 'Save Settings'; }, 1500);
+    });
+
+    load();
+  </script>
+</body>
+</html>

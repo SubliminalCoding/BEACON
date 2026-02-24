@@ -1,0 +1,30 @@
+{
+  "name": "beacon",
+  "version": "0.1.0",
+  "description": "Your Windows project memory companion — remembers everything, coaches your progress.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win --x64"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^32.3.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.beacon.app",
+    "productName": "BEACON",
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false
+    }
+  }
+}
