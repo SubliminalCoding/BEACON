@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('beacon', {
   minimizeWindow:      ()       => ipcRenderer.send('minimize-window'),
   enableInput:         ()       => ipcRenderer.send('character-enable-input'),
   disableInput:        ()       => ipcRenderer.send('character-disable-input'),
+  getWindowPosition:   ()       => ipcRenderer.invoke('get-window-position'),
+  setWindowPosition:   (x, y)  => ipcRenderer.send('set-window-position', x, y),
 
   // Notifications
   notify:              (title, body) => ipcRenderer.send('show-notification', { title, body }),

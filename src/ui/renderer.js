@@ -184,7 +184,21 @@ document.getElementById('menu-hide').addEventListener('click', () => {
   window.beacon.disableInput();
 });
 
-// ─── Mouse interaction ────────────────────────────────────────────────────────
+// ─── Minimize button ─────────────────────────────────────────────────────────
+
+document.getElementById('minimize-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  window.beacon.minimizeWindow();
+});
+
+// ─── Mouse interaction (drag + click) ────────────────────────────────────────
+
+let isDragging = false;
+let dragStartScreenX = 0;
+let dragStartScreenY = 0;
+let dragStartWinX = 0;
+let dragStartWinY = 0;
+const DRAG_THRESHOLD = 5; // px dead zone so clicks don't accidentally drag
 
 canvas.addEventListener('mouseenter', () => {
   isHovered = true;
@@ -193,29 +207,60 @@ canvas.addEventListener('mouseenter', () => {
 
 canvas.addEventListener('mouseleave', () => {
   isHovered = false;
-  if (!ctxMenu.classList.contains('visible')) {
+  if (!isDragging && !ctxMenu.classList.contains('visible')) {
     window.beacon.disableInput();
   }
 });
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  showContextMenu(e.clientX, e.clientY);
+  if (!isDragging) showContextMenu(e.clientX, e.clientY);
 });
 
-canvas.addEventListener('click', (e) => {
-  if (ctxMenu.classList.contains('visible')) {
-    hideContextMenu();
-    return;
-  }
-  // Single click: show current project info
-  window.beacon.getAllProjectStats().then(stats => {
-    const active = stats.find(s => s.project.lastActiveAt);
-    if (active && animator) {
-      const h = Math.floor((active.project.totalTimeMs || 0) / 3600000);
-      animator.speak(`${active.project.name} — ${h}h total`);
+canvas.addEventListener('mousedown', async (e) => {
+  if (e.button !== 0) return; // left button only
+  if (ctxMenu.classList.contains('visible')) { hideContextMenu(); return; }
+
+  dragStartScreenX = e.screenX;
+  dragStartScreenY = e.screenY;
+  const [wx, wy] = await window.beacon.getWindowPosition();
+  dragStartWinX = wx;
+  dragStartWinY = wy;
+  isDragging = false; // not yet — wait for threshold
+  canvas.style.cursor = 'grab';
+
+  const onMove = (ev) => {
+    const dx = ev.screenX - dragStartScreenX;
+    const dy = ev.screenY - dragStartScreenY;
+    if (!isDragging && Math.abs(dx) + Math.abs(dy) > DRAG_THRESHOLD) {
+      isDragging = true;
+      canvas.style.cursor = 'grabbing';
     }
-  });
+    if (isDragging) {
+      window.beacon.setWindowPosition(dragStartWinX + dx, dragStartWinY + dy);
+    }
+  };
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    canvas.style.cursor = 'default';
+
+    if (!isDragging) {
+      // Was a click, not a drag — show project info
+      window.beacon.getAllProjectStats().then(stats => {
+        const active = stats.find(s => s.project.lastActiveAt);
+        if (active && animator) {
+          const h = Math.floor((active.project.totalTimeMs || 0) / 3600000);
+          animator.speak(`${active.project.name} — ${h}h total`);
+        }
+      });
+    }
+    isDragging = false;
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 });
 
 document.addEventListener('click', (e) => {

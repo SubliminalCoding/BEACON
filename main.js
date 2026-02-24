@@ -359,6 +359,15 @@ ipcMain.on('character-disable-input', () => {
   if (characterWindow) characterWindow.setIgnoreMouseEvents(true, { forward: true });
 });
 
+// Character window drag
+ipcMain.handle('get-window-position', () => {
+  if (characterWindow) return characterWindow.getPosition();
+  return [0, 0];
+});
+ipcMain.on('set-window-position', (_, x, y) => {
+  if (characterWindow) characterWindow.setPosition(x, y);
+});
+
 // Window close/minimize
 ipcMain.on('close-window', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
